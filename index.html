@@ -194,7 +194,6 @@
             { id: 147, responsible: 'LUMENA THAIS VIMIEIRO MELO', location: 'SALA 2104 – CENTRAL DE ATENDIMENTO CASEU', mainCategory: 'coord_enfermagem_caseu', subCategory: 'CASEU', status: 'Entregue' },
             { id: 148, responsible: 'SORAIA MACARI', location: 'SALA 2105 – NÚCLEO DE ORTODONTIA', mainCategory: 'coord_enfermagem_caseu', subCategory: 'CASEU', status: 'Entregue' },
             { id: 149, responsible: 'LUMENA THAIS VIMIEIRO MELO', location: 'SALA 2110 – SECRETARIA E PRODUTIVIDADE CASEU', mainCategory: 'coord_enfermagem_caseu', subCategory: 'CASEU', status: 'Entregue' },
-            // NOVO ITEM ADICIONADO AQUI:
             { id: 218, responsible: 'PROFA. ANDREIA MARIA DRUMMOND', location: 'SALA 2112 - COORDENAÇÃO CASEU', mainCategory: 'coord_enfermagem_caseu', subCategory: 'CASEU', status: 'Pendente' },
 
             // Infraestrutura e Oficina
@@ -254,7 +253,6 @@
             { id: 28, responsible: 'PROF. JOÃO BATISTA NOVAES JUNIOR', location: 'SALA 2928 - DIRETORIA E VICE-DIRETORIA', mainCategory: 'administrativo', subCategory: 'Diretoria', status: 'Entregue' },
             { id: 29, responsible: 'RONALDO CONDE', location: 'SALA 2929 - SALA DE REUNIÃO', mainCategory: 'administrativo', subCategory: 'Diretoria', status: 'Entregue' },
             { id: 30, responsible: 'RONALDO CONDE', location: 'SALA 2930 - CONGREGAÇÃO', mainCategory: 'administrativo', subCategory: 'Diretoria', status: 'Entregue' },
-            // NOVO ITEM ADICIONADO AQUI:
             { id: 217, responsible: 'PROF. RICARDO VAZ', location: 'SALA 2808 A- BANCO DE DENTES', mainCategory: 'administrativo', subCategory: 'Diretoria', status: 'Pendente' }
         ];
 
@@ -317,4 +315,142 @@
 
             chartPercentage.textContent = `${percentage}%`;
             if(progressChart) {
-                progressChart.data.datasets[0].data =
+                progressChart.data.datasets[0].data = [entregue, pendente];
+                progressChart.update();
+            }
+        }
+
+        function updateDashboard() {
+            const mainCategory = categoryFilter.value;
+            const subCategory = subcategoryFilter.value;
+
+            let filteredData;
+            let title = "Status de todos os locais";
+
+            if (mainCategory === 'todos') {
+                filteredData = inventoryData;
+            } else {
+                const categoryText = categoryFilter.options[categoryFilter.selectedIndex].text;
+                title = `Status de ${categoryText}`;
+                
+                filteredData = inventoryData.filter(item => item.mainCategory === mainCategory);
+
+                const hasSubcategories = inventoryData.some(item => item.mainCategory === mainCategory && item.subCategory);
+
+                if (hasSubcategories && subCategory && subCategory !== 'all-sub') {
+                      const subCategoryText = subcategoryFilter.options[subcategoryFilter.selectedIndex].text;
+                      title += ` / ${subCategoryText}`;
+                      filteredData = filteredData.filter(item => item.subCategory === subCategory);
+                }
+            }
+
+            listTitle.textContent = title;
+            renderStatusList(filteredData);
+            updateMetrics(filteredData);
+        }
+
+        function populateSubcategories(mainCategory) {
+            subcategoryFilter.innerHTML = '';
+            
+            const subcategories = [...new Set(
+                inventoryData
+                    .filter(item => item.mainCategory === mainCategory && item.subCategory)
+                    .map(item => item.subCategory)
+            )].sort();
+
+            if (subcategories.length > 0) {
+                subcategoryFilterContainer.classList.remove('hidden');
+                
+                const allOption = document.createElement('option');
+                allOption.value = 'all-sub';
+                allOption.textContent = 'Todas as subcategorias';
+                subcategoryFilter.appendChild(allOption);
+
+                subcategories.forEach(sub => {
+                    const option = document.createElement('option');
+                    option.value = sub;
+                    option.textContent = sub;
+                    subcategoryFilter.appendChild(option);
+                });
+            } else {
+                subcategoryFilterContainer.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            progressChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    datasets: [{
+                        data: [0, 1],
+                        backgroundColor: ['#16a34a', '#f59e0b'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    cutout: '80%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    }
+                }
+            });
+            
+            updateDashboard(); // Carga inicial
+        });
+
+        categoryFilter.addEventListener('change', () => {
+            populateSubcategories(categoryFilter.value);
+            updateDashboard();
+        });
+
+        subcategoryFilter.addEventListener('change', () => {
+            updateDashboard();
+        });
+
+        // Lógica do Contador
+        const countdownContainer = document.getElementById('countdown-container');
+        const startDate = new Date('2025-10-13T00:00:00');
+        const endDate = new Date('2025-12-05T23:59:59');
+        const today = new Date();
+
+        today.setHours(0, 0, 0, 0);
+
+        if (today < startDate) {
+            const daysToStart = Math.ceil((startDate - today) / (1000 * 60 * 60 * 24));
+            countdownContainer.innerHTML = `
+                <i data-lucide="calendar-clock" class="mx-auto h-10 w-10 text-blue-600 mb-2"></i>
+                O período do inventário começa em <span class="text-blue-600">${daysToStart}</span> ${daysToStart > 1 ? 'dias' : 'dia'}.
+            `;
+        } else if (today >= startDate && today <= endDate) {
+            const daysRemaining = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+            if (daysRemaining > 1) {
+                countdownContainer.innerHTML = `
+                    <i data-lucide="alarm-clock" class="mx-auto h-10 w-10 text-yellow-500 mb-2"></i>
+                    Faltam <span class="text-yellow-600">${daysRemaining}</span> dias para o fim do prazo.
+                `;
+            } else if (daysRemaining === 1) {
+                 countdownContainer.innerHTML = `
+                    <i data-lucide="alarm-clock-off" class="mx-auto h-10 w-10 text-red-500 mb-2"></i>
+                    <span class="text-red-600">Atenção! O prazo termina hoje!</span>
+                `;
+            } else {
+                 countdownContainer.innerHTML = `
+                    <i data-lucide="calendar-x-2" class="mx-auto h-10 w-10 text-red-500 mb-2"></i>
+                    <span class="text-red-600">Prazo Encerrado!</span>
+                `;
+            }
+        } else {
+            countdownContainer.innerHTML = `
+                <i data-lucide="calendar-check-2" class="mx-auto h-10 w-10 text-green-600 mb-2"></i>
+                <span class="text-green-700">O período para o inventário de 2025 foi encerrado.</span>
+            `;
+        }
+        lucide.createIcons();
+    </script>
+
+</body>
+</html>
